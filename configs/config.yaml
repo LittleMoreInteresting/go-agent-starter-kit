@@ -15,3 +15,8 @@ memory:
   redis_password: ""
   key_prefix: "agent"
   history_size: 20
+
+agent:
+  system_prompt: "你是电商平台的智能客服助手。请礼貌、简洁、可执行地回答用户问题。"
+  knowledge_path: "configs/knowledge_base.json"
+  knowledge_top_k: 3

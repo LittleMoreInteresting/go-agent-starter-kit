@@ -12,6 +12,7 @@ type Config struct {
 	Server ServerConfig
 	LLM    LLMConfig
 	Memory MemoryConfig
+	Agent  AgentConfig
 }
 
 type ServerConfig struct{ Address string }
@@ -31,6 +32,12 @@ type MemoryConfig struct {
 	RedisPass   string
 	KeyPrefix   string
 	HistorySize int
+}
+
+type AgentConfig struct {
+	SystemPrompt  string
+	KnowledgePath string
+	KnowledgeTopK int
 }
 
 func Load(path string) (*Config, error) {
@@ -108,6 +115,17 @@ func parseSimpleYAML(content string, cfg *Config) error {
 					cfg.Memory.HistorySize = n
 				}
 			}
+		case "agent":
+			switch k {
+			case "system_prompt":
+				cfg.Agent.SystemPrompt = v
+			case "knowledge_path":
+				cfg.Agent.KnowledgePath = v
+			case "knowledge_top_k":
+				if n, e := strconv.Atoi(v); e == nil {
+					cfg.Agent.KnowledgeTopK = n
+				}
+			}
 		}
 	}
 	return s.Err()
@@ -141,6 +159,15 @@ func applyDefaults(cfg *Config) {
 	if cfg.Memory.HistorySize <= 0 {
 		cfg.Memory.HistorySize = 20
 	}
+	if cfg.Agent.SystemPrompt == "" {
+		cfg.Agent.SystemPrompt = "你是电商平台的智能客服助手。请礼貌、简洁、可执行地回答用户问题。"
+	}
+	if cfg.Agent.KnowledgePath == "" {
+		cfg.Agent.KnowledgePath = "configs/knowledge_base.json"
+	}
+	if cfg.Agent.KnowledgeTopK <= 0 {
+		cfg.Agent.KnowledgeTopK = 3
+	}
 }
 
 func applyEnv(cfg *Config) {
@@ -172,6 +199,13 @@ func applyEnv(cfg *Config) {
 	setIf("MEMORY_HISTORY_SIZE", func(v string) {
 		if n, e := strconv.Atoi(v); e == nil {
 			cfg.Memory.HistorySize = n
+		}
+	})
+	setIf("AGENT_SYSTEM_PROMPT", func(v string) { cfg.Agent.SystemPrompt = v })
+	setIf("KNOWLEDGE_PATH", func(v string) { cfg.Agent.KnowledgePath = v })
+	setIf("KNOWLEDGE_TOP_K", func(v string) {
+		if n, e := strconv.Atoi(v); e == nil {
+			cfg.Agent.KnowledgeTopK = n
 		}
 	})
 }

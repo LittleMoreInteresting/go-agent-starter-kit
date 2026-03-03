@@ -11,6 +11,7 @@ import (
 
 	"go-agent-starter-kit/internal/agent"
 	"go-agent-starter-kit/internal/config"
+	"go-agent-starter-kit/internal/knowledge"
 	"go-agent-starter-kit/internal/llm"
 	"go-agent-starter-kit/internal/memory"
 	"go-agent-starter-kit/internal/server"
@@ -35,10 +36,16 @@ func main() {
 	}
 	defer mem.Close()
 
+	docs, err := knowledge.LoadDocuments(cfg.Agent.KnowledgePath)
+	if err != nil {
+		logger.Printf("knowledge base unavailable (%v), fallback to empty", err)
+	}
+	kb := knowledge.NewInMemoryBase(docs)
+
 	llmClient := llm.NewOpenAIClient(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model, time.Duration(cfg.LLM.TimeoutS)*time.Second)
 	registry := tools.NewRegistry(tools.NewCalculatorTool())
 	exec := agent.NewExecutor(registry)
-	ag := agent.New(llmClient, mem, exec, cfg.Memory.HistorySize)
+	ag := agent.New(llmClient, mem, exec, cfg.Memory.HistorySize, cfg.Agent.SystemPrompt, kb, cfg.Agent.KnowledgeTopK)
 
 	h := server.New(ag).Handler()
 	srv := &http.Server{Addr: cfg.Server.Address, Handler: h}
